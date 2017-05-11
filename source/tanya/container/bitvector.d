@@ -12,26 +12,41 @@
  */
 module tanya.container.bitvector;
 
+import tanya.memory;
+
 /**
- * Wrapper that allows bit manipulation on $(D_KEYWORD ubyte[]) array.
+ * Single-dimensioned bit array.
  */
 struct BitVector
 {
-    protected ubyte[] vector;
+    private size_t length_;
+    private ubyte* data;
+    private size_t capacity_;
+
+    pure nothrow @safe @nogc invariant
+    {
+        assert(this.capacity_ <= size_t.max / 8);
+        assert(this.capacity_ * 8 - this.length_ <= 8);
+        assert(this.capacity_ == 0 || this.data !is null);
+    }
 
     /**
      * Params:
-     *  array = Array should be manipulated on.
+     *  array     = Array should be manipulated on.
+     *  allocator = Allocator.
      */
-    this(inout(ubyte[]) array) inout pure nothrow @safe @nogc
+    this(ubyte[] array, shared Allocator allocator = defaultAllocator)
+    pure nothrow @trusted @nogc
     in
     {
         assert(array.length <= size_t.max / 8);
-        assert(array !is null);
     }
     body
     {
-        vector = array;
+        this(allocator);
+        this.data = array.ptr;
+        this.capacity_ = array.length;
+        this.length_ = array.length * 8;
     }
 
     ///
@@ -41,25 +56,44 @@ struct BitVector
         ubyte[3] array2 = [65, 13, 173];
         auto bits = BitVector(array1);
 
-        assert(bits[] is array1);
-        assert(bits[] !is array2);
+        assert(bits.get() is array1);
+        assert(bits.get() !is array2);
 
         bits = BitVector(array2);
-        assert(bits[] is array2);
+        assert(bits.get() is array2);
+    }
+
+    /// Ditto.
+    this(shared Allocator allocator) pure nothrow @safe @nogc
+    in
+    {
+        assert(allocator !is null);
+    }
+    body
+    {
+        this.allocator_ = allocator;
+    }
+
+    /**
+     * Returns: Capacity in bits.
+     */
+    @property size_t capacity() const pure nothrow @safe @nogc
+    {
+        return this.capacity_ * 8;
     }
 
     /**
      * Returns: Number of bits in the vector.
      */
-    @property inout(size_t) length() inout const pure nothrow @safe @nogc
+    @property size_t length() const pure nothrow @safe @nogc
     {
-        return vector.length * 8;
+        return this.length_;
     }
 
     /// Ditto.
-    inout(size_t) opDollar() inout const pure nothrow @safe @nogc
+    size_t opDollar() const pure nothrow @safe @nogc
     {
-        return vector.length * 8;
+        return length;
     }
 
     ///
@@ -79,14 +113,14 @@ struct BitVector
      * Returns: $(D_KEYWORD true) if the bit on position $(D_PARAM bit) is set,
      *          $(D_KEYWORD false) if not set.
      */
-    inout(bool) opIndex(size_t bit) inout const pure nothrow @safe @nogc
+    inout(bool) opIndex(size_t bit) inout const pure nothrow @trusted @nogc
     in
     {
-        assert(bit / 8 <= vector.length);
+        assert(bit <= length);
     }
     body
     {
-        return (vector[bit / 8] & (0x80 >> (bit % 8))) != 0;
+        return (data[bit / 8] & (0x80 >> (bit % 8))) != 0;
     }
 
     ///
@@ -109,9 +143,15 @@ struct BitVector
     /**
      * Returns: Underlying array.
      */
-    inout(ubyte[]) opIndex() inout pure nothrow @safe @nogc
+    ubyte[] get() pure nothrow @trusted @nogc
     {
-        return vector;
+        return this.data[0 .. this.capacity_];
+    }
+
+    /// Ditto.
+    const(ubyte[]) get() const pure nothrow @trusted @nogc
+    {
+        return this.data[0 .. this.capacity_];
     }
 
     ///
@@ -121,7 +161,7 @@ struct BitVector
         ubyte[3] arr = [65, 13, 173];
         auto bits = BitVector(arr);
 
-        assert(bits[] is arr);
+        assert(bits.get() is arr);
     }
 
     /**
@@ -132,20 +172,20 @@ struct BitVector
      *
      * Returns: $(D_PSYMBOL this).
      */
-    bool opIndexAssign(bool value, size_t bit) pure nothrow @safe @nogc
+    bool opIndexAssign(bool value, size_t bit) pure nothrow @trusted @nogc
     in
     {
-        assert(bit / 8 <= vector.length);
+        assert(bit <= length);
     }
     body
     {
         if (value)
         {
-            vector[bit / 8] |= (0x80 >> (bit % 8));
+            data[bit / 8] |= (0x80 >> (bit % 8));
         }
         else
         {
-            vector[bit / 8] &= ~(0x80 >> (bit % 8));
+            data[bit / 8] &= ~(0x80 >> (bit % 8));
         }
         return value;
     }
@@ -158,14 +198,14 @@ struct BitVector
         auto bits = BitVector(arr);
 
         bits[5] = bits[6] = true;
-        assert(bits[][0] == 71);
+        assert(bits.get()[0] == 71);
 
         bits[14] = true;
         bits[15] = false;
-        assert(bits[][1] == 14);
+        assert(bits.get()[1] == 14);
 
         bits[16] = bits[23] = false;
-        assert(bits[][2] == 44);
+        assert(bits.get()[2] == 44);
     }
 
     /**
@@ -181,19 +221,19 @@ struct BitVector
      *
      * Returns: $(D_KEYWORD this).
      */
-    BitVector opAssign(ubyte[] vector) pure nothrow @safe @nogc
+    BitVector opAssign(ubyte[] vector) pure nothrow @trusted @nogc
     in
     {
-        assert(vector.length <= this.vector.length);
+        assert(vector.length <= this.capacity_);
     }
     body
     {
-        immutable delta = this.vector.length - vector.length;
+        const delta = this.capacity_ - vector.length;
         if (delta > 0)
         {
-            this.vector[0..delta] = 0;
+            this.data[0 .. delta] = 0;
         }
-        this.vector[delta..$] = vector[0..$];
+        this.data[delta .. this.capacity_] = vector[0 .. $];
         return this;
     }
 
@@ -205,18 +245,18 @@ struct BitVector
         auto bits = BitVector(array1);
 
         bits = array2;
-        assert(bits[][0] == 0);
-        assert(bits[][1] == 0);
-        assert(bits[][2] == 65);
-        assert(bits[][3] == 13);
-        assert(bits[][4] == 173);
+        assert(bits.get()[0] == 0);
+        assert(bits.get()[1] == 0);
+        assert(bits.get()[2] == 65);
+        assert(bits.get()[3] == 13);
+        assert(bits.get()[4] == 173);
 
-        bits = array2[0..2];
-        assert(bits[][0] == 0);
-        assert(bits[][1] == 0);
-        assert(bits[][2] == 0);
-        assert(bits[][3] == 65);
-        assert(bits[][4] == 13);
+        bits = array2[0 .. 2];
+        assert(bits.get()[0] == 0);
+        assert(bits.get()[1] == 0);
+        assert(bits.get()[2] == 0);
+        assert(bits.get()[3] == 65);
+        assert(bits.get()[4] == 13);
     }
 
     /**
@@ -230,28 +270,28 @@ struct BitVector
     BitVector opOpAssign(string op)(BitVector that) pure nothrow @safe @nogc
         if ((op == "^") || (op == "|") || (op == "&"))
     {
-        return opOpAssign(op)(that.vector);
+        return opOpAssign(op)(that.data[0 .. that.capacity_]);
     }
 
     /// Ditto.
-    BitVector opOpAssign(string op)(ubyte[] that) pure nothrow @safe @nogc
+    BitVector opOpAssign(string op)(ubyte[] that) pure nothrow @trusted @nogc
         if ((op == "^") || (op == "|") || (op == "&"))
     in
     {
-        assert(that.length <= vector.length);
+        assert(that.length <= this.capacity_);
     }
     body
     {
-        for (int i = cast(int) vector.length - 1; i >= 0; --i)
+        for (int i = cast(int) this.capacity_ - 1; i >= 0; --i)
         {
-            mixin("vector[i] " ~  op ~ "= " ~ "that[i];");
+            mixin("data[i] " ~  op ~ "= " ~ "that[i];");
         }
-        immutable delta = vector.length - that.length;
+        const delta = this.capacity_ - that.length;
         if (delta)
         {
             static if (op == "&")
             {
-                vector[0..delta] = 0;
+                data[0 .. delta] = 0;
             }
         }
         return this;
@@ -266,19 +306,19 @@ struct BitVector
         auto bits = BitVector(array1);
 
         bits |= array2;
-        assert(bits[][0] == 0b01010011);
-        assert(bits[][1] == 0b10111111);
-        assert(bits[][2] == 0b10111111);
+        assert(bits.get()[0] == 0b01010011);
+        assert(bits.get()[1] == 0b10111111);
+        assert(bits.get()[2] == 0b10111111);
 
         bits &= array2;
-        assert(bits[][0] == array2[0]);
-        assert(bits[][1] == array2[1]);
-        assert(bits[][2] == array2[2]);
+        assert(bits.get()[0] == array2[0]);
+        assert(bits.get()[1] == array2[1]);
+        assert(bits.get()[2] == array2[2]);
 
         bits ^= array2;
-        assert(bits[][0] == 0);
-        assert(bits[][1] == 0);
-        assert(bits[][2] == 0);
+        assert(bits.get()[0] == 0);
+        assert(bits.get()[1] == 0);
+        assert(bits.get()[2] == 0);
     }
 
     /**
@@ -289,129 +329,128 @@ struct BitVector
      *
      * Returns: $(D_KEYWORD this).
      */
-    BitVector opOpAssign(string op)(in size_t n) pure nothrow @safe @nogc
+    BitVector opOpAssign(string op)(in size_t n) pure nothrow @trusted @nogc
         if ((op == "<<") || (op == ">>"))
     {
         if (n >= length)
         {
-            vector[0..$] = 0;
+            data[0 .. this.capacity_] = 0;
         }
         else if (n != 0)
         {
-            immutable bit = n % 8, step = n / 8;
-            immutable delta = 8 - bit;
+            const bit = n % 8, step = n / 8;
+            const delta = 8 - bit;
             size_t i, j;
 
             static if (op == "<<")
             {
-                for (j = step; j < vector.length - 1; ++i)
+                for (j = step; j < this.capacity_ - 1; ++i)
                 {
-                    vector[i] = cast(ubyte)((vector[j] << bit)
-                              | vector[++j] >> delta);
+                    this.data[i] = cast(ubyte) ((this. data[j] << bit)
+                                 | this.data[++j] >> delta);
                 }
-                vector[i] = cast(ubyte)(vector[j] << bit);
-                vector[$ - step ..$] = 0;
+                this.data[i] = cast(ubyte) (this.data[j] << bit);
+                this.data[this.capacity_ - step .. this.capacity_] = 0;
             }
             else static if (op == ">>")
             {
-                for (i = vector.length - 1, j = i - step; j > 0; --i)
+                for (i = this.capacity_ - 1, j = i - step; j > 0; --i)
                 {
-                    vector[i] = cast(ubyte)((vector[j] >> bit)
-                              | vector[--j] << delta);
+                    this.data[i] = cast(ubyte) ((this.data[j] >> bit)
+                                 | this.data[--j] << delta);
                 }
-                vector[i] = cast(ubyte)(vector[j] >> bit);
-                vector[0..step] = 0;
+                this.data[i] = cast(ubyte) (this.data[j] >> bit);
+                this.data[0 .. step] = 0;
             }
         }
         return this;
     }
 
-    ///
-    nothrow @safe @nogc unittest
+    private nothrow @safe @nogc unittest
     {
         ubyte[4] arr = [0b10111110, 0b11110010, 0b01010010, 0b01010011];
         auto bits = BitVector(arr);
 
         bits <<= 0;
-        assert(bits[][0] == 0b10111110 && bits[][1] == 0b11110010
-            && bits[][2] == 0b01010010 && bits[][3] == 0b01010011);
+        assert(bits.get()[0] == 0b10111110 && bits.get()[1] == 0b11110010
+            && bits.get()[2] == 0b01010010 && bits.get()[3] == 0b01010011);
 
         bits <<= 2;
-        assert(bits[][0] == 0b11111011 && bits[][1] == 0b11001001
-            && bits[][2] == 0b01001001 && bits[][3] == 0b01001100);
+        assert(bits.get()[0] == 0b11111011 && bits.get()[1] == 0b11001001
+            && bits.get()[2] == 0b01001001 && bits.get()[3] == 0b01001100);
 
         bits <<= 4;
-        assert(bits[][0] == 0b10111100 && bits[][1] == 0b10010100
-            && bits[][2] == 0b10010100 && bits[][3] == 0b11000000);
+        assert(bits.get()[0] == 0b10111100 && bits.get()[1] == 0b10010100
+            && bits.get()[2] == 0b10010100 && bits.get()[3] == 0b11000000);
 
         bits <<= 8;
-        assert(bits[][0] == 0b10010100 && bits[][1] == 0b10010100
-            && bits[][2] == 0b11000000 && bits[][3] == 0b00000000);
+        assert(bits.get()[0] == 0b10010100 && bits.get()[1] == 0b10010100
+            && bits.get()[2] == 0b11000000 && bits.get()[3] == 0b00000000);
 
         bits <<= 7;
-        assert(bits[][0] == 0b01001010 && bits[][1] == 0b01100000
-            && bits[][2] == 0b00000000 && bits[][3] == 0b00000000);
+        assert(bits.get()[0] == 0b01001010 && bits.get()[1] == 0b01100000
+            && bits.get()[2] == 0b00000000 && bits.get()[3] == 0b00000000);
 
         bits <<= 25;
-        assert(bits[][0] == 0b00000000 && bits[][1] == 0b00000000
-            && bits[][2] == 0b00000000 && bits[][3] == 0b00000000);
+        assert(bits.get()[0] == 0b00000000 && bits.get()[1] == 0b00000000
+            && bits.get()[2] == 0b00000000 && bits.get()[3] == 0b00000000);
 
         arr = [0b00110011, 0b11001100, 0b11111111, 0b01010101];
         bits <<= 24;
-        assert(bits[][0] == 0b01010101 && bits[][1] == 0b00000000
-            && bits[][2] == 0b00000000 && bits[][3] == 0b00000000);
+        assert(bits.get()[0] == 0b01010101 && bits.get()[1] == 0b00000000
+            && bits.get()[2] == 0b00000000 && bits.get()[3] == 0b00000000);
 
         arr[1] = 0b11001100;
         arr[2] = 0b11111111;
         arr[3] = 0b01010101;
         bits <<= 12;
-        assert(bits[][0] == 0b11001111 && bits[][1] == 0b11110101
-            && bits[][2] == 0b01010000 && bits[][3] == 0b00000000);
+        assert(bits.get()[0] == 0b11001111 && bits.get()[1] == 0b11110101
+            && bits.get()[2] == 0b01010000 && bits.get()[3] == 0b00000000);
 
         bits <<= 100;
-        assert(bits[][0] == 0b00000000 && bits[][1] == 0b00000000
-            && bits[][2] == 0b00000000 && bits[][3] == 0b00000000);
+        assert(bits.get()[0] == 0b00000000 && bits.get()[1] == 0b00000000
+            && bits.get()[2] == 0b00000000 && bits.get()[3] == 0b00000000);
 
         arr = [0b10111110, 0b11110010, 0b01010010, 0b01010011];
         bits >>= 0;
-        assert(bits[][0] == 0b10111110 && bits[][1] == 0b11110010
-            && bits[][2] == 0b01010010 && bits[][3] == 0b01010011);
+        assert(bits.get()[0] == 0b10111110 && bits.get()[1] == 0b11110010
+            && bits.get()[2] == 0b01010010 && bits.get()[3] == 0b01010011);
 
         bits >>= 2;
-        assert(bits[][0] == 0b00101111 && bits[][1] == 0b10111100
-            && bits[][2] == 0b10010100 && bits[][3] == 0b10010100);
+        assert(bits.get()[0] == 0b00101111 && bits.get()[1] == 0b10111100
+            && bits.get()[2] == 0b10010100 && bits.get()[3] == 0b10010100);
 
         bits >>= 4;
-        assert(bits[][0] == 0b00000010 && bits[][1] == 0b11111011
-            && bits[][2] == 0b11001001 && bits[][3] == 0b01001001);
+        assert(bits.get()[0] == 0b00000010 && bits.get()[1] == 0b11111011
+            && bits.get()[2] == 0b11001001 && bits.get()[3] == 0b01001001);
 
         bits >>= 8;
-        assert(bits[][0] == 0b00000000 && bits[][1] == 0b00000010
-            && bits[][2] == 0b11111011 && bits[][3] == 0b11001001);
+        assert(bits.get()[0] == 0b00000000 && bits.get()[1] == 0b00000010
+            && bits.get()[2] == 0b11111011 && bits.get()[3] == 0b11001001);
 
         bits >>= 7;
-        assert(bits[][0] == 0b00000000 && bits[][1] == 0b00000000
-            && bits[][2] == 0b00000101 && bits[][3] == 0b11110111);
+        assert(bits.get()[0] == 0b00000000 && bits.get()[1] == 0b00000000
+            && bits.get()[2] == 0b00000101 && bits.get()[3] == 0b11110111);
 
         bits >>= 25;
-        assert(bits[][0] == 0b00000000 && bits[][1] == 0b00000000
-            && bits[][2] == 0b00000000 && bits[][3] == 0b00000000);
+        assert(bits.get()[0] == 0b00000000 && bits.get()[1] == 0b00000000
+            && bits.get()[2] == 0b00000000 && bits.get()[3] == 0b00000000);
 
         arr = [0b00110011, 0b11001100, 0b11111111, 0b01010101];
         bits >>= 24;
-        assert(bits[][0] == 0b00000000 && bits[][1] == 0b00000000
-            && bits[][2] == 0b00000000 && bits[][3] == 0b00110011);
+        assert(bits.get()[0] == 0b00000000 && bits.get()[1] == 0b00000000
+            && bits.get()[2] == 0b00000000 && bits.get()[3] == 0b00110011);
 
         arr[1] = 0b11001100;
         arr[2] = 0b11111111;
         arr[3] = 0b01010101;
         bits >>= 12;
-        assert(bits[][0] == 0b00000000 && bits[][1] == 0b00000000
-            && bits[][2] == 0b00001100 && bits[][3] == 0b11001111);
+        assert(bits.get()[0] == 0b00000000 && bits.get()[1] == 0b00000000
+            && bits.get()[2] == 0b00001100 && bits.get()[3] == 0b11001111);
 
         bits >>= 100;
-        assert(bits[][0] == 0b00000000 && bits[][1] == 0b00000000
-            && bits[][2] == 0b00000000 && bits[][3] == 0b00000000);
+        assert(bits.get()[0] == 0b00000000 && bits.get()[1] == 0b00000000
+            && bits.get()[2] == 0b00000000 && bits.get()[3] == 0b00000000);
     }
 
     /**
@@ -419,10 +458,10 @@ struct BitVector
      *
      * Returns: $(D_KEYWORD this).
      */
-    BitVector opUnary(string op)() pure nothrow @safe @nogc
+    BitVector opUnary(string op)() @trusted
         if (op == "~")
     {
-        foreach (ref b; vector)
+        foreach (ref b; this.data[0 .. this.capacity_])
         {
             b = ~b;
         }
@@ -437,9 +476,9 @@ struct BitVector
         auto bits = BitVector(arr);
 
         ~bits;
-        assert(bits[][0] == 0b10111110);
-        assert(bits[][1] == 0b11110010);
-        assert(bits[][2] == 0b01010010);
+        assert(bits.get()[0] == 0b10111110);
+        assert(bits.get()[1] == 0b11110010);
+        assert(bits.get()[2] == 0b01010010);
     }
 
     /**
@@ -450,12 +489,12 @@ struct BitVector
      *
      * Returns: By $(D_PARAM dg) returned value.
      */
-    int opApply(int delegate(size_t, bool) dg)
+    int opApply(int delegate(size_t, bool) dg) @trusted
     {
         int result;
-        foreach (i, ref v; vector)
+        foreach (i, ref v; this.data[0 .. this.capacity_])
         {
-            foreach (c; 0..8)
+            foreach (c; 0 .. 8)
             {
                 result = dg(i * 8 + c, (v & (0x80 >> c)) != 0);
                 if (result)
@@ -468,12 +507,12 @@ struct BitVector
     }
 
     /// Ditto.
-    int opApply(int delegate(bool) dg)
+    int opApply(int delegate(bool) dg) @trusted
     {
         int result;
-        foreach (ref v; vector)
+        foreach (ref v; this.data[0 .. this.capacity_])
         {
-            foreach (c; 0..8)
+            foreach (c; 0 .. 8)
             {
                 result = dg((v & (0x80 >> c)) != 0);
                 if (result)
@@ -507,4 +546,6 @@ struct BitVector
         }
         assert(c == 16);
     }
+
+    mixin DefaultAllocator;
 }
