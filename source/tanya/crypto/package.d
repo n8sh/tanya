@@ -3,16 +3,21 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /**
- * This package provides tools to work with text encodings.
+ * Cryptography.
  *
  * Copyright: Eugene Wissner 2017.
  * License: $(LINK2 https://www.mozilla.org/en-US/MPL/2.0/,
  *                  Mozilla Public License, v. 2.0).
  * Authors: $(LINK2 mailto:info@caraus.de, Eugene Wissner)
- * Source: $(LINK2 https://github.com/caraus-ecms/tanya/blob/master/source/tanya/encoding/package.d,
- *                 tanya/encoding/package.d)
  */
-module tanya.encoding;
+module tanya.crypto;
 
-public import tanya.encoding.ascii;
-public import tanya.encoding.asn1;
+public import tanya.crypto.aes;
+public import tanya.crypto.base64;
+public import tanya.crypto.des;
+public import tanya.crypto.mac;
+public import tanya.crypto.mode;
+public import tanya.crypto.rsa;
+public import tanya.crypto.symmetric;
+public import tanya.crypto.tls;
+public import tanya.crypto.x509;

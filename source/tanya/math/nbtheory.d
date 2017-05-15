@@ -14,6 +14,7 @@
  */
 module tanya.math.nbtheory;
 
+import tanya.algorithm.mutation;
 import tanya.math.mp;
 import tanya.meta.trait;
 
@@ -162,4 +163,48 @@ pure nothrow @safe @nogc unittest
     assert(ln(1.0f) == 0.0f);
     assert(ln(1.0) == 0.0);
     assert(ln(1.0L) == 0.0L);
+}
+
+void inv(ref Integer z, ref Integer a)
+{
+    Integer y2, quotient;
+
+    auto y = Integer(1);
+    auto y1 = Integer(1);
+
+    auto i = a;
+    auto j = z;
+    if (z < 0)
+    {
+        j %= a;
+        // force positive remainder always
+        j = abs(move(j));
+        j -= a;
+    }
+
+    while (j != 0)
+    {
+        auto remainder = i;
+        i = j;
+        quotient = abs(remainder / j);
+        remainder %= j;
+
+        quotient *= y1; // quotient = y1 * quotient
+        y = y2;
+        y -= quotient; // y = y2 - (y1 * quotient)
+
+        j = remainder;
+        y2 = y1;
+        y1 = y;
+    }
+
+    z = y2;
+    z %= a; // inv_z = y2 % a
+
+    if (z < 0)
+    {
+        z = abs(move(z));
+        z -= a;
+        z = abs(move(z));
+    }
 }
