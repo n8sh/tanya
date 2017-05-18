@@ -12,7 +12,7 @@
  */
 module tanya.crypto.symmetric;
 
-import tanya.container.vector;
+import tanya.container.array;
 
 // Cipher direction.
 enum Direction : ushort
@@ -75,7 +75,7 @@ interface BlockCipher : SymmetricCipher
      *
      * Precondition: $(D_INLINECODE plain.length == blockLength && cipher.length == blockLength).
      */
-    void encrypt(ref const Vector!ubyte plain, ref Vector!ubyte cipher)
+    void encrypt(ref const Array!ubyte plain, ref Array!ubyte cipher)
     in
     {
         assert(plain.length == blockLength);
@@ -91,7 +91,7 @@ interface BlockCipher : SymmetricCipher
      *
      * Precondition: $(D_INLINECODE plain.length == blockLength && cipher.length == blockLength).
      */
-    void decrypt(ref const Vector!ubyte cipher, ref Vector!ubyte plain)
+    void decrypt(ref const Array!ubyte cipher, ref Array!ubyte plain)
     in
     {
         assert(plain.length == blockLength);
@@ -106,7 +106,7 @@ interface BlockCipher : SymmetricCipher
      *
      * Precondition: $(D_INLINECODE key.length == this.keyLength).
      */
-    @property void key(ref const Vector!ubyte key)
+    @property void key(ref const Array!ubyte key)
     in
     {
         assert(key.length == this.keyLength);

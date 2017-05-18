@@ -16,7 +16,7 @@ import core.stdc.stdlib;
 import core.stdc.string;
 import std.algorithm.mutation;
 import std.range;
-import tanya.container.vector;
+import tanya.container.array;
 import tanya.crypto.symmetric;
 
 version (unittest)
@@ -44,7 +44,7 @@ final class DES(uint L = 1) : BlockCipher
     private enum pc1KeyLength = 7;
     private enum subkeyLength = 6;
 
-    private Vector!ubyte key_;
+    private Array!ubyte key_;
 
     /**
      * Params:
@@ -52,7 +52,7 @@ final class DES(uint L = 1) : BlockCipher
      *
      * Precondition: $(D_INLINECODE key.length == this.keyLength).
      */
-    this(ref const Vector!ubyte key)
+    this(ref const Array!ubyte key)
     in
     {
         assert(key.length == this.keyLength);
@@ -75,7 +75,7 @@ final class DES(uint L = 1) : BlockCipher
      *
      * Precondition: $(D_INLINECODE key.length == this.keyLength).
      */
-    @property void key(ref const Vector!ubyte key)
+    @property void key(ref const Array!ubyte key)
     in
     {
         assert(key.length == this.keyLength);
@@ -94,7 +94,7 @@ final class DES(uint L = 1) : BlockCipher
      *
      * Precondition: $(D_INLINECODE plain.length == blockLength && cipher.length == blockLength).
      */
-    void encrypt(ref const Vector!ubyte plain, ref Vector!ubyte cipher)
+    void encrypt(ref const Array!ubyte plain, ref Array!ubyte cipher)
     {
         operate!(Direction.encryption, L)(plain.get(), cipher.get());
     }
@@ -108,7 +108,7 @@ final class DES(uint L = 1) : BlockCipher
      *
      * Precondition: $(D_INLINECODE plain.length == blockLength && cipher.length == blockLength).
      */
-    void decrypt(ref const Vector!ubyte cipher, ref Vector!ubyte plain)
+    void decrypt(ref const Array!ubyte cipher, ref Array!ubyte plain)
     {
         operate!(Direction.decryption, L)(cipher.get(), plain.get());
     }

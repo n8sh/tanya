@@ -14,7 +14,7 @@ module tanya.crypto.mode;
 
 import std.algorithm.mutation;
 import std.typecons;
-import tanya.container.vector;
+import tanya.container.array;
 import tanya.crypto.symmetric;
 import tanya.memory;
 
@@ -305,11 +305,11 @@ interface CipherMode
          * Precondition: $(D_INLINECODE this.cipher !is null
          *                           && iv.length = this.cipher.blockLength).
          */
-        void start(Direction direction, ref const Vector!ubyte iv);
+        void start(Direction direction, ref const Array!ubyte iv);
     }
     else
     {
-        void start(Direction direction, ref const Vector!ubyte iv)
+        void start(Direction direction, ref const Array!ubyte iv)
         in
         {
             assert(this.cipher !is null);
@@ -341,7 +341,7 @@ interface CipherMode
      *                              input.length % cipher.blockLength == 0 &&
      *                              input.length == output.length).
      */
-    void process(ref const Vector!ubyte input, ref Vector!ubyte output)
+    void process(ref const Array!ubyte input, ref Array!ubyte output)
     in
     {
         assert(!direction.isNull);
@@ -352,7 +352,7 @@ interface CipherMode
     /**
      * Returns: Initialization vector.
      */
-    @property ref const(Vector!ubyte) iv() const;
+    @property ref const(Array!ubyte) iv() const;
 
     /**
      * Resets the key.
@@ -363,7 +363,7 @@ interface CipherMode
      * Precondition: $(D_INLINECODE this.cipher !is null
      *                           && key.length = this.cipher.keyLength).
      */
-    @property void key(ref const Vector!ubyte key)
+    @property void key(ref const Array!ubyte key)
     in
     {
         assert(this.cipher !is null);
@@ -383,7 +383,7 @@ class CBC : CipherMode
 {
     private BlockCipher cipher_;
     private Nullable!Direction direction_;
-    private Vector!ubyte iv_;
+    private Array!ubyte iv_;
 
     invariant
     {
@@ -432,7 +432,7 @@ class CBC : CipherMode
      * Precondition: $(D_INLINECODE this.cipher !is null
      *                           && iv.length = this.cipher.blockLength).
      */
-    void start(Direction direction, ref const Vector!ubyte iv)
+    void start(Direction direction, ref const Array!ubyte iv)
     in
     {
         assert(iv.length == this.cipher.blockLength);
@@ -470,7 +470,7 @@ class CBC : CipherMode
      *                              input.length % cipher.blockLength == 0 &&
      *                              input.length == output.length).
      */
-    void process(ref const Vector!ubyte input, ref Vector!ubyte output)
+    void process(ref const Array!ubyte input, ref Array!ubyte output)
     in
     {
         assert(!this.direction.isNull);
@@ -480,8 +480,8 @@ class CBC : CipherMode
     body
     {
         size_t pos;
-        auto inBlock = Vector!ubyte(this.cipher.blockLength);
-        auto outBlock = Vector!ubyte(this.cipher.blockLength);
+        auto inBlock = Array!ubyte(this.cipher.blockLength);
+        auto outBlock = Array!ubyte(this.cipher.blockLength);
 
         final switch (this.direction) with (Direction)
         {
@@ -519,7 +519,7 @@ class CBC : CipherMode
     /**
      * Returns: Initialization vector.
      */
-    @property ref const(Vector!ubyte) iv() const
+    @property ref const(Array!ubyte) iv() const
     {
         return iv_;
     }
@@ -533,7 +533,7 @@ class CBC : CipherMode
      * Precondition: $(D_INLINECODE this.cipher !is null
      *                           && key.length = this.cipher.keyLength).
      */
-    @property void key(ref const Vector!ubyte key)
+    @property void key(ref const Array!ubyte key)
     in
     {
         assert(this.cipher !is null);

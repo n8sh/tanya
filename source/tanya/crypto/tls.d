@@ -17,7 +17,7 @@ import std.digest.sha;
 import std.digest.md;
 import std.range;
 import tanya.async.privkey;
-import tanya.container.vector;
+import tanya.container.array;
 import tanya.crypto.aes;
 import tanya.crypto.mac;
 import tanya.crypto.mode;
@@ -120,9 +120,9 @@ struct CipherSuite
 
 struct ProtectionParameters
 {
-    Vector!ubyte macSecret;
-    Vector!ubyte key;
-    Vector!ubyte iv;
+    Array!ubyte macSecret;
+    Array!ubyte key;
+    Array!ubyte iv;
     private CipherSuite cipherSuite;
     ulong sequenceNumber;
 
@@ -427,8 +427,8 @@ struct ClientHello
 {
     ProtocolVersion protocolVersion;
     Random random;
-    Vector!ubyte sessionId;
-    Vector!ushort cipherSuites;
+    Array!ubyte sessionId;
+    Array!ushort cipherSuites;
 }
 
 struct ServerHello
@@ -516,7 +516,7 @@ ptrdiff_t receive_tls_msg(ubyte[] buffer,
     // If a cipherspec is active, all of "encrypted" will be encrypted.
     // Must decrypt it before continuing.  This will change the message length
     // in all cases, since decrypting also involves verifying a MAC.
-    const decrypted = decrypt(Vector!ubyte(encrypted), parameters.active_recv_parameters);
+    const decrypted = decrypt(Array!ubyte(encrypted), parameters.active_recv_parameters);
 
     ++parameters.active_recv_parameters.sequenceNumber;
 
@@ -611,7 +611,7 @@ private void parseClientHello(ref Range!(const ubyte) msgBuffer,
     msgBuffer[4 .. 32].copy(parameters.clientRandom[4 .. 32]);
     msgBuffer.popFrontN(32);
 
-    hello.sessionId = Vector!ubyte(msgBuffer.front);
+    hello.sessionId = Array!ubyte(msgBuffer.front);
     msgBuffer.popFront();
     if (hello.sessionId.length > 0)
     {
@@ -623,7 +623,7 @@ private void parseClientHello(ref Range!(const ubyte) msgBuffer,
     const cipherSuitesLength = msgBuffer[0 .. 2].toHostOrder!ushort()
                              / ushort.sizeof;
     msgBuffer.popFrontN(2);
-    hello.cipherSuites = Vector!ushort(cipherSuitesLength);
+    hello.cipherSuites = Array!ushort(cipherSuitesLength);
 
     foreach (ref cipherSuite; hello.cipherSuites[])
     {
@@ -680,7 +680,7 @@ int sendServerHello(ref TLSParameters parameters)
     package_.cipher_suite = parameters.pending_send_parameters.suite;
     package_.compression_method = 0;
 
-    Vector!ubyte writeBuffer;
+    Array!ubyte writeBuffer;
     writeBuffer.insertBack(package_.protocolVersion.major);
     writeBuffer.insertBack(package_.protocolVersion.minor);
 
@@ -700,7 +700,7 @@ int sendCertificate(ref TLSParameters parameters)
     // Allocate enough space for the certificate file, plus 2 3-byte length
     // entries.
     const certificateLength = parameters.handshakeParameters.certificateChain.length;
-    auto send_buffer = Vector!ubyte(certificateLength + 6);
+    auto send_buffer = Array!ubyte(certificateLength + 6);
 
     NetworkOrder!3(certificateLength + 3).copy(send_buffer[0 .. 3]);
     NetworkOrder!3(certificateLength).copy(send_buffer[3 .. 6]);
@@ -833,14 +833,14 @@ private void parseServerHello(ref Range!(const ubyte) msgBuffer,
  * off the MAC if present as well as bulk cipher padding (if a block cipher
  * algorithm is being used).
  */
-private Vector!ubyte decrypt(const Vector!ubyte encrypted,
-                             ref ProtectionParameters parameters)
+private Array!ubyte decrypt(const Array!ubyte encrypted,
+                            ref ProtectionParameters parameters)
 {
-    Vector!ubyte decrypted;
+    Array!ubyte decrypted;
 
     if (parameters.cipherSuite.bulkCipher !is null)
     {
-        auto encryptedBuffer = Vector!ubyte(encrypted[21 .. $]);
+        auto encryptedBuffer = Array!ubyte(encrypted[21 .. $]);
         encrypted[5 .. 21].copy(parameters.iv[]);
         decrypted.length = encryptedBuffer.length;
 
@@ -865,7 +865,7 @@ private Vector!ubyte decrypt(const Vector!ubyte encrypted,
 
         // Allocate enough space for the 8-byte sequence number, the TLSPlainText
         // header, and the fragment (e.g. the decrypted message).
-        auto macBuffer = Vector!ubyte(13 + msg.length);
+        auto macBuffer = Array!ubyte(13 + msg.length);
         copy(NetworkOrder!8(parameters.sequenceNumber), macBuffer[0 .. 8]);
 
         // Copy first three bytes of header; last two bytes reflected the
@@ -938,7 +938,7 @@ private void calculateKeys(ref TLSParameters parameters)
     const blockLength = suite.bulkCipher.cipher.blockLength;
     const keyBlockLength = suite.hash_size * 2 + keyLength * 2 + blockLength * 2;
     ubyte[parameters.clientRandom.length + parameters.serverRandom.length] seed;
-    auto keyBlock = Vector!ubyte(keyBlockLength);
+    auto keyBlock = Array!ubyte(keyBlockLength);
     auto keyBlockRange = keyBlock[];
 
     parameters.serverRandom[].copy(seed[0 .. parameters.serverRandom.length]);
@@ -961,11 +961,11 @@ private void calculateKeys(ref TLSParameters parameters)
     keyBlockRange[0 .. keyLength].copy(parameters.pending_send_parameters.key[]);
     keyBlockRange.popFrontN(keyLength);
 
-    parameters.pending_recv_parameters.iv = Vector!ubyte(blockLength);
+    parameters.pending_recv_parameters.iv = Array!ubyte(blockLength);
     keyBlockRange[0 .. blockLength].copy(parameters.pending_recv_parameters.iv[]);
     keyBlockRange.popFrontN(blockLength);
 
-    parameters.pending_send_parameters.iv = Vector!ubyte(blockLength);
+    parameters.pending_send_parameters.iv = Array!ubyte(blockLength);
     keyBlockRange[0 .. blockLength].copy(parameters.pending_send_parameters.iv[]);
 }
 
@@ -973,7 +973,7 @@ private int sendHandshakeMessage(HandshakeType type,
                                  const ubyte[] message,
                                  ref TLSParameters parameters)
 {
-    auto sendBuffer = Vector!ubyte(message.length + 4);
+    auto sendBuffer = Array!ubyte(message.length + 4);
     auto record = Handshake(type, cast(uint) message.length);
 
     sendBuffer[0] = record.type;
@@ -1011,11 +1011,11 @@ private int sendMessage(ContentType contentType,
                         ref TLSParameters parameters)
 {
     TLSPlaintext header;
-    Vector!ubyte sendBuffer;
+    Array!ubyte sendBuffer;
     int sendBufferSize;
     int paddingLength;
     CipherSuite* active_suite = &parameters.active_send_parameters.cipherSuite;
-    Vector!ubyte hash;
+    Array!ubyte hash;
 
     header.type = contentType;
     header.protocolVersion.major = TLS_VERSION_MAJOR;
@@ -1025,7 +1025,7 @@ private int sendMessage(ContentType contentType,
     {
         // Allocate enough space for the 8-byte sequence number, the 5-byte pseudo
         // header, and the content.
-        auto macBuffer = Vector!ubyte(13 + content.length);
+        auto macBuffer = Array!ubyte(13 + content.length);
 
         copy(NetworkOrder!8(parameters.active_send_parameters.sequenceNumber),
              macBuffer[0 .. 8]);
@@ -1086,8 +1086,8 @@ private int sendMessage(ContentType contentType,
 
     if (active_suite.bulkCipher !is null)
     {
-        auto encryptedBuffer = Vector!ubyte(sendBufferSize - 5);
-        auto decrypted = Vector!ubyte(sendBuffer[5 .. $]);
+        auto encryptedBuffer = Array!ubyte(sendBufferSize - 5);
+        auto decrypted = Array!ubyte(sendBuffer[5 .. $]);
         parameters.active_send_parameters.iv[].fill(cast(ubyte) 0);
 
         sendBuffer[5 .. $].copy(encryptedBuffer[]);
@@ -1148,8 +1148,8 @@ private void pHash(H)(const ubyte[] key,
                       ubyte[] output)
     if (hasBlockSize!H)
 {
-    auto secret = Vector!ubyte(key);
-    auto seed = const Vector!ubyte(seed_);
+    auto secret = Array!ubyte(key);
+    auto seed = const Array!ubyte(seed_);
 
     auto A_ctx_ = defaultAllocator.make!(HMAC!H);
     auto h = defaultAllocator.make!(HMAC!H);
@@ -1159,7 +1159,7 @@ private void pHash(H)(const ubyte[] key,
     auto A_hash = A_ctx_.finish();
 
     // length of the hash code in bytes
-    auto A = Vector!ubyte(A_hash.length + seed.length);
+    auto A = Array!ubyte(A_hash.length + seed.length);
     copy(A_hash[], A[0 .. A_hash.length]);
     copy(seed[], A[A_hash.length .. $]);
 
@@ -1199,8 +1199,8 @@ void prf(const ubyte[] secret,
          ubyte[] output)
 {
     size_t half_secret_len;
-    auto sha1_out = Vector!ubyte(output.length);
-    auto concat = Vector!ubyte(label.length + seed.length);
+    auto sha1_out = Array!ubyte(output.length);
+    auto concat = Array!ubyte(label.length + seed.length);
 
     label.copy(concat[0 .. label.length]);
     seed.copy(concat[label.length .. $]);

@@ -93,7 +93,7 @@ ubyte[] rsa_process(ubyte[] input,
         output = cast(ubyte[]) realloc(output.ptr, encrypted_size)[0 .. encrypted_size];
 
         // Unload integer.
-        auto source = c.toVector();
+        auto source = c.toArray();
         auto target = output.ptr;
         foreach (d; source[])
         {
@@ -150,7 +150,7 @@ ubyte[] rsa_decrypt(const(ubyte)[] input, ref rsa_key private_key)
         auto m = pow(c, private_key.exponent, private_key.modulus);
 
         // Unload integer.
-        auto source = m.toVector();
+        auto source = m.toArray();
         auto target = padded_block.ptr;
 
         source[].copy(padded_block[padded_block.length - source.length .. $]);

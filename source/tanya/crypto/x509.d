@@ -17,7 +17,7 @@ import core.stdc.time;
 import std.digest.digest;
 import std.digest.md;
 import std.digest.sha;
-import tanya.container.vector;
+import tanya.container.array;
 import tanya.crypto.rsa;
 import tanya.encoding.asn1;
 import tanya.math.mp;
@@ -177,14 +177,14 @@ int parse_x509_certificate(const(ubyte)* buffer,
             break;
     }
 
-    auto hash = defaultAllocator.make!(Vector!ubyte);
+    auto hash = defaultAllocator.make!(Array!ubyte);
     switch (parsed_certificate.algorithm) with (signatureAlgorithmIdentifier)
     {
         case md5WithRSAEncryption:
-            *hash = Vector!ubyte(digest!MD5(tbsCertificate.data[0 .. tbsCertificate.length]));
+            *hash = Array!ubyte(digest!MD5(tbsCertificate.data[0 .. tbsCertificate.length]));
             break;
         case shaWithRSAEncryption:
-            *hash = Vector!ubyte(digest!SHA1(tbsCertificate.data[0 .. tbsCertificate.length]));
+            *hash = Array!ubyte(digest!SHA1(tbsCertificate.data[0 .. tbsCertificate.length]));
             break;
         default:
             break;
