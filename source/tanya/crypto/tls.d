@@ -25,7 +25,7 @@ import tanya.crypto.symmetric;
 import tanya.crypto.rsa;
 import tanya.crypto.x509;
 import tanya.memory;
-import tanya.network.inet;
+import tanya.net.inet;
 
 enum CipherSuiteIdentifier : ushort
 {
@@ -594,7 +594,7 @@ ptrdiff_t receive_tls_msg(ubyte[] buffer,
     return decrypted.length;
 }
 
-private void parseClientHello(ref Range!(const ubyte) msgBuffer,
+private void parseClientHello(ref Array!ubyte.ConstRange msgBuffer,
                               ref TLSParameters parameters)
 {
     int i;
@@ -751,7 +751,7 @@ private int sendFinished(ref TLSParameters parameters)
     return 1;
 }
 
-private void parseFinished(ref Range!(const ubyte) msgBuffer,
+private void parseFinished(ref Array!ubyte.ConstRange msgBuffer,
                            ref TLSParameters parameters)
 {
     auto verifyData = computeVerifyData("client finished", parameters);
@@ -781,7 +781,7 @@ private ubyte[12] computeVerifyData(const char[] finishedLabel,
     return verifyData;
 }
 
-private void parseServerHello(ref Range!(const ubyte) msgBuffer,
+private void parseServerHello(ref Array!ubyte.ConstRange msgBuffer,
                               ref TLSParameters parameters)
 {
     ServerHello hello;
@@ -896,7 +896,7 @@ private Array!ubyte decrypt(const Array!ubyte encrypted,
  * do is decrypt it.  See "privkey.c" for details.
  * TODO expand this to support Diffie-Hellman key exchange
  */
-private void parseClientKeyExchange(ref Range!(const ubyte) msgBuffer,
+private void parseClientKeyExchange(ref Array!ubyte.ConstRange msgBuffer,
                                     ref TLSParameters parameters)
 {
     ubyte* buffer;

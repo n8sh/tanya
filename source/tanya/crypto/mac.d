@@ -39,7 +39,7 @@ interface MessageAuthenticationCode
      * Params:
      *  data = Input.
      */
-    void put(Range!(const ubyte) data) @nogc;
+    void put(Array!ubyte.ConstRange data) @nogc;
 
     /**
      * Computes the hash of the current message.
@@ -110,7 +110,7 @@ final class HMAC(H) : MessageAuthenticationCode
      * Params:
      *  data = Input.
      */
-    void put(Range!(const ubyte) data) pure nothrow @safe
+    void put(Array!ubyte.ConstRange data) pure nothrow @safe
     {
         this.idigest.put(data.get());
     }

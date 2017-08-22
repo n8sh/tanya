@@ -513,11 +513,11 @@ private unittest
         [0x16, 0x6b, 0x40, 0xb4, 0x4a, 0xba, 0x4b, 0xd6],
     ];
 
-    auto key = Vector!ubyte(cast(ubyte[8]) [0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01]);
+    auto key = Array!ubyte(cast(ubyte[8]) [0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01]);
     auto des = defaultAllocator.make!(DES!1)(key);
 
-    auto plain = Vector!ubyte(cast(ubyte[8]) [0x80, 0, 0, 0, 0, 0, 0, 0]);
-    auto cipher = Vector!ubyte(8);
+    auto plain = Array!ubyte(cast(ubyte[8]) [0x80, 0, 0, 0, 0, 0, 0, 0]);
+    auto cipher = Array!ubyte(8);
 
     foreach (ubyte i; 0 .. 64)
     {
@@ -602,9 +602,9 @@ private unittest
         [0x86, 0x9e, 0xfd, 0x7f, 0x9f, 0x26, 0x5a, 0x09],
     ];
 
-    auto key = Vector!ubyte(8);
-    auto cipher = Vector!ubyte(8);
-    auto plain = const Vector!ubyte(8);
+    auto key = Array!ubyte(8);
+    auto cipher = Array!ubyte(8);
+    auto plain = const Array!ubyte(8);
 
     foreach (ubyte i; 0 .. 56)
     {
@@ -614,7 +614,7 @@ private unittest
             key[i / 7 - 1] = cast(ubyte) 0x01;
         }
         auto des = defaultAllocator.make!(DES!1)(key);
-        auto testVector = const Vector!ubyte(desTestVectors2[i]);
+        auto testVector = const Array!ubyte(desTestVectors2[i]);
 
         // Initial Permutation and Expansion test.
         des.encrypt(plain, cipher);
@@ -670,9 +670,9 @@ private unittest
     auto des = defaultAllocator.make!(DES!1);
     foreach (i; desTestVectors3)
     {
-        auto cipher = Vector!ubyte(8);
-        const plain = Vector!ubyte(8);
-        auto key = Vector!ubyte(i[0]);
+        auto cipher = Array!ubyte(8);
+        const plain = Array!ubyte(8);
+        auto key = Array!ubyte(i[0]);
         des.key = key;
 
         des.encrypt(plain, cipher);
@@ -730,11 +730,11 @@ private unittest
     auto des = defaultAllocator.make!(DES!1);
     foreach (i; desTestVectors4)
     {
-        auto cipher = Vector!ubyte(8);
-        auto plain = Vector!ubyte(8);
-        auto key = Vector!ubyte(i[0]);
+        auto cipher = Array!ubyte(8);
+        auto plain = Array!ubyte(8);
+        auto key = Array!ubyte(i[0]);
         des.key = key;
-        auto testVector = const Vector!ubyte(i[1]);
+        auto testVector = const Array!ubyte(i[1]);
 
         des.encrypt(testVector, cipher);
         assert(equal(cipher[], i[2][]));
@@ -749,17 +749,17 @@ private unittest
    NIST Special Publication 800-67, 2012. Appendix B */
 private unittest
 {
-    auto key = Vector!ubyte(cast(ubyte[24]) [
+    auto key = Array!ubyte(cast(ubyte[24]) [
         0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
         0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01,
         0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23,
     ]);
-    auto actual = Vector!ubyte(8);
+    auto actual = Array!ubyte(8);
     auto des = defaultAllocator.make!(DES!3)(key);
 
     {
-        auto plaintext = const Vector!ubyte([ 'T', 'h', 'e', ' ', 'q', 'u', 'f', 'c' ]);
-        auto ciphertext = const Vector!ubyte(cast(ubyte[8]) [
+        auto plaintext = const Array!ubyte([ 'T', 'h', 'e', ' ', 'q', 'u', 'f', 'c' ]);
+        auto ciphertext = const Array!ubyte(cast(ubyte[8]) [
             0xa8, 0x26, 0xfd, 0x8c, 0xe5, 0x3b, 0x85, 0x5f
         ]);
 
@@ -770,8 +770,8 @@ private unittest
         assert(actual == plaintext);
     }
     {
-        auto plaintext = const Vector!ubyte([ 'k', ' ', 'b', 'r', 'o', 'w', 'n', ' ' ]);
-        auto ciphertext = const Vector!ubyte(cast(ubyte[8]) [
+        auto plaintext = const Array!ubyte([ 'k', ' ', 'b', 'r', 'o', 'w', 'n', ' ' ]);
+        auto ciphertext = const Array!ubyte(cast(ubyte[8]) [
             0xcc, 0xe2, 0x1c, 0x81, 0x12, 0x25, 0x6f, 0xe6
         ]);
 
@@ -782,8 +782,8 @@ private unittest
         assert(actual == plaintext);
     }
     {
-        auto plaintext = const Vector!ubyte([ 'f', 'o', 'x', ' ', 'j', 'u', 'm', 'p' ]);
-        auto ciphertext = const Vector!ubyte(cast(ubyte[8]) [
+        auto plaintext = const Array!ubyte([ 'f', 'o', 'x', ' ', 'j', 'u', 'm', 'p' ]);
+        auto ciphertext = const Array!ubyte(cast(ubyte[8]) [
             0x68, 0xd5, 0xc0, 0x5d, 0xd9, 0xb6, 0xb9, 0x00
         ]);
 
