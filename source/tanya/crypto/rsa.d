@@ -15,6 +15,7 @@ import core.stdc.stdlib;
 import core.stdc.stdio;
 import std.algorithm.mutation;
 import tanya.math;
+import tanya.math.mp;
 
 struct rsa_key
 {
