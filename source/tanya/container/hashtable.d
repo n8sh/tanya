@@ -859,6 +859,14 @@ if (is(typeof(((Key k) => hasher(k))(Key.init)) == size_t))
                 return range.front.kv.value;
             }
         }
+        for (auto range = this.data.array[0 .. code]; !range.empty; range.popFront())
+        {
+            if (key == range.front.key)
+            {
+                return range.front.kv.value;
+            }
+        }
+
         assert(false, "Range violation");
     }
 

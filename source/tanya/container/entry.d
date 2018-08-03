@@ -201,7 +201,8 @@ package struct HashArray(alias hasher, K, V = void)
         const newLengthIndex = this.lengthIndex + 1;
         if (newLengthIndex != primes.length)
         {
-            foreach (ref e; this.array[locateBucket(key) .. $])
+            const bucketPosition = locateBucket(key);
+            foreach (ref e; this.array[bucketPosition .. $])
             {
                 if (e == key)
                 {
@@ -213,11 +214,35 @@ package struct HashArray(alias hasher, K, V = void)
                     return e;
                 }
             }
-
+            foreach (ref e; this.array[0 .. bucketPosition])
+            {
+                if (e == key)
+                {
+                    return e;
+                }
+                else if (e.status != BucketStatus.used)
+                {
+                    ++this.length;
+                    return e;
+                }
+            }
             this.rehashToSize(newLengthIndex);
         }
 
-        foreach (ref e; this.array[locateBucket(key) .. $])
+        const bucketPosition = locateBucket(key);
+        foreach (ref e; this.array[bucketPosition .. $])
+        {
+            if (e == key)
+            {
+                return e;
+            }
+            else if (e.status != BucketStatus.used)
+            {
+                ++this.length;
+                return e;
+            }
+        }
+        foreach (ref e; this.array[0 .. bucketPosition])
         {
             if (e == key)
             {
@@ -249,8 +274,15 @@ package struct HashArray(alias hasher, K, V = void)
             if (e1.status == BucketStatus.used)
             {
                 auto bucketPosition = hasher(e1.key) % primes[n];
-
                 foreach (ref e2; storage[bucketPosition .. $])
+                {
+                    if (e2.status != BucketStatus.used) // Insert the key
+                    {
+                        .move(e1, e2);
+                        continue DataLoop;
+                    }
+                }
+                foreach (ref e2; storage[0 .. bucketPosition])
                 {
                     if (e2.status != BucketStatus.used) // Insert the key
                     {
@@ -294,7 +326,21 @@ package struct HashArray(alias hasher, K, V = void)
 
     size_t remove(ref Key key)
     {
-        foreach (ref e; this.array[locateBucket(key) .. $])
+        const bucketPosition = locateBucket(key);
+        foreach (ref e; this.array[bucketPosition .. $])
+        {
+            if (e == key) // Found.
+            {
+                e.remove();
+                --this.length;
+                return 1;
+            }
+            else if (e.status == BucketStatus.empty)
+            {
+                break;
+            }
+        }
+        foreach (ref e; this.array[0 .. bucketPosition])
         {
             if (e == key) // Found.
             {
@@ -312,7 +358,19 @@ package struct HashArray(alias hasher, K, V = void)
 
     bool opBinaryRight(string op : "in", T)(ref const T key) const
     {
-        foreach (ref e; this.array[locateBucket(key) .. $])
+        const bucketPosition = locateBucket(key);
+        foreach (ref e; this.array[bucketPosition .. $])
+        {
+            if (e == key) // Found.
+            {
+                return true;
+            }
+            else if (e.status == BucketStatus.empty)
+            {
+                break;
+            }
+        }
+        foreach (ref e; this.array[0 .. bucketPosition])
         {
             if (e == key) // Found.
             {
